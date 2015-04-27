@@ -1,6 +1,6 @@
 ## About this fork
 
-This fork adds two main changes:
+This fork adds three main changes:
 
 1. Infinite loops are prevented from occuring when autoAnchor is set to false.
 3. Properties are written in the order that they appear in the class source file.
@@ -27,17 +27,6 @@ To add this fork to an existing maven project, add the following to your pom.xml
     </repository>
   </repositories>
 ```
-
-## Property Filtering
-
-For examlpe, if you have a class User and you don't want to write its password property you could use this:
-
-```java
-YamlConfig config = new Conifg();
-config.setPropertyFilter(User.class new PropertyFilter() {
-    @Override
-    public Set<Beans.Property> filter(Set<Beans.Property> properties) throws YamlException {
-
 
 ## Property Filtering
 
