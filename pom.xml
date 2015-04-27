@@ -10,7 +10,7 @@
 	</parent>
 
 	<name>YamlBeans</name>
-	<groupId>com.esotericsoftware.yamlbeans</groupId>
+	<groupId>nz.co.thirstygoat</groupId>
 	<artifactId>yamlbeans</artifactId>
 	<version>1.09</version>
 
