@@ -16,32 +16,20 @@
 
 package com.esotericsoftware.yamlbeans;
 
+import com.esotericsoftware.yamlbeans.Beans.Property;
+import com.esotericsoftware.yamlbeans.YamlConfig.WriteConfig;
+import com.esotericsoftware.yamlbeans.compound.PropertyFilter;
+import com.esotericsoftware.yamlbeans.emitter.Emitter;
+import com.esotericsoftware.yamlbeans.emitter.EmitterException;
+import com.esotericsoftware.yamlbeans.parser.*;
+import com.esotericsoftware.yamlbeans.scalar.ScalarSerializer;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-
-import com.esotericsoftware.yamlbeans.Beans.Property;
-import com.esotericsoftware.yamlbeans.YamlConfig.WriteConfig;
-import com.esotericsoftware.yamlbeans.emitter.Emitter;
-import com.esotericsoftware.yamlbeans.emitter.EmitterException;
-import com.esotericsoftware.yamlbeans.parser.AliasEvent;
-import com.esotericsoftware.yamlbeans.parser.DocumentEndEvent;
-import com.esotericsoftware.yamlbeans.parser.DocumentStartEvent;
-import com.esotericsoftware.yamlbeans.parser.Event;
-import com.esotericsoftware.yamlbeans.parser.MappingStartEvent;
-import com.esotericsoftware.yamlbeans.parser.ScalarEvent;
-import com.esotericsoftware.yamlbeans.parser.SequenceStartEvent;
-import com.esotericsoftware.yamlbeans.scalar.ScalarSerializer;
 
 /** Serializes Java objects as YAML.
  * @author <a href="mailto:misc@n4te.com">Nathan Sweet</a> */
@@ -85,6 +73,8 @@ public class YamlWriter {
 	}
 
 	private void writeInternal (Object object) throws YamlException {
+		Stack<Object> parentObjects = new Stack();
+		parentObjects.push(object);
 		try {
 			if (!started) {
 				emitter.emit(Event.STREAM_START);
@@ -92,7 +82,9 @@ public class YamlWriter {
 			}
 			emitter.emit(new DocumentStartEvent(config.writeConfig.explicitFirstDocument, null, null));
 			isRoot = true;
-			writeValue(object, config.writeConfig.writeRootTags ? null : object.getClass(), null, null);
+			parentObjects.push(object);
+			writeValue(object, config.writeConfig.writeRootTags ? null : object.getClass(), null, null, parentObjects);
+			parentObjects.pop();
 			emitter.emit(new DocumentEndEvent(config.writeConfig.explicitEndDocument));
 		} catch (EmitterException ex) {
 			throw new YamlException("Error writing YAML.", ex);
@@ -131,7 +123,7 @@ public class YamlWriter {
 		}
 	}
 
-	private void writeValue (Object object, Class fieldClass, Class elementType, Class defaultType) throws EmitterException,
+	private void writeValue (Object object, Class fieldClass, Class elementType, Class defaultType, Stack<Object> parentObjects) throws EmitterException,
 		IOException, YamlException {
 		boolean isRoot = this.isRoot;
 		this.isRoot = false;
@@ -200,7 +192,9 @@ public class YamlWriter {
 			emitter.emit(new SequenceStartEvent(anchor, tag, !showTag, false));
 			for (Object item : (Collection)object) {
 				if (isRoot && !config.writeConfig.writeRootElementTags) elementType = item.getClass();
-				writeValue(item, elementType, null, null);
+				parentObjects.push(item);
+				writeValue(item, elementType, null, null, parentObjects);
+				parentObjects.pop();
 			}
 			emitter.emit(Event.SEQUENCE_END);
 			return;
@@ -210,9 +204,13 @@ public class YamlWriter {
 			emitter.emit(new MappingStartEvent(anchor, tag, !showTag, false));
 			for (Object item : ((Map)object).entrySet()) {
 				Entry entry = (Entry)item;
-				writeValue(entry.getKey(), null, null, null);
+				parentObjects.push(entry.getKey());
+				writeValue(entry.getKey(), null, null, null, parentObjects);
+				parentObjects.pop();
 				if (isRoot && !config.writeConfig.writeRootElementTags) elementType = entry.getValue().getClass();
-				writeValue(entry.getValue(), elementType, null, null);
+				parentObjects.push(entry.getValue());
+				writeValue(entry.getValue(), elementType, null, null, parentObjects);
+				parentObjects.pop();
 			}
 			emitter.emit(Event.MAPPING_END);
 			return;
@@ -221,8 +219,11 @@ public class YamlWriter {
 		if (fieldClass.isArray()) {
 			elementType = fieldClass.getComponentType();
 			emitter.emit(new SequenceStartEvent(anchor, null, true, false));
-			for (int i = 0, n = Array.getLength(object); i < n; i++)
-				writeValue(Array.get(object, i), elementType, null, null);
+			for (int i = 0, n = Array.getLength(object); i < n; i++) {
+				parentObjects.push(Array.get(object, i));
+				writeValue(Array.get(object, i), elementType, null, null, parentObjects);
+				parentObjects.pop();
+			}
 			emitter.emit(Event.SEQUENCE_END);
 			return;
 		}
@@ -244,9 +245,20 @@ public class YamlWriter {
 
 		Set<Property> properties = Beans.getProperties(valueClass, config.beanProperties, config.privateFields, config);
 		emitter.emit(new MappingStartEvent(anchor, tag, !showTag, false));
+		// Check if a property filter has been defined for the given class, and if so apply it.
+		for (Entry<Class, PropertyFilter> entry : config.propertyFilters.entrySet()) {
+			if (entry.getKey().isAssignableFrom(valueClass)) {
+				PropertyFilter selector = entry.getValue();
+				properties = selector.filter(properties);
+			}
+		}
 		for (Property property : properties) {
 			try {
 				Object propertyValue = property.get(object);
+				if (parentObjects.contains(propertyValue)) {
+					// To avoid infinite loops, don't output objects which are parents of this object.
+					continue;
+				}
 				if (prototype != null) {
 					// Don't output properties that have the default value for the prototype.
 					Object prototypeValue = property.get(prototype);
@@ -256,7 +268,9 @@ public class YamlWriter {
 				emitter.emit(new ScalarEvent(null, null, new boolean[] {true, true}, property.getName(), (char)0));
 				Class propertyElementType = config.propertyToElementType.get(property);
 				Class propertyDefaultType = config.propertyToDefaultType.get(property);
-				writeValue(propertyValue, property.getType(), propertyElementType, propertyDefaultType);
+				parentObjects.push(propertyValue);
+				writeValue(propertyValue, property.getType(), propertyElementType, propertyDefaultType, parentObjects);
+				parentObjects.pop();
 			} catch (Exception ex) {
 				throw new YamlException("Error getting property '" + property + "' on class: " + valueClass.getName(), ex);
 			}

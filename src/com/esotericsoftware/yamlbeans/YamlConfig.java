@@ -26,6 +26,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 import com.esotericsoftware.yamlbeans.Beans.Property;
+import com.esotericsoftware.yamlbeans.compound.PropertyFilter;
 import com.esotericsoftware.yamlbeans.emitter.EmitterConfig;
 import com.esotericsoftware.yamlbeans.scalar.DateSerializer;
 import com.esotericsoftware.yamlbeans.scalar.ScalarSerializer;
@@ -42,6 +43,7 @@ public class YamlConfig {
 	final Map<String, String> classNameToTag = new HashMap();
 	final Map<String, Class> tagToClass = new HashMap();
 	final Map<Class, ScalarSerializer> scalarSerializers = new IdentityHashMap();
+	final Map<Class, PropertyFilter> propertyFilters = new IdentityHashMap();
 	final Map<Property, Class> propertyToElementType = new HashMap();
 	final Map<Property, Class> propertyToDefaultType = new HashMap();
 	boolean beanProperties = true;
@@ -71,6 +73,13 @@ public class YamlConfig {
 		if (type == null) throw new IllegalArgumentException("type cannot be null.");
 		if (serializer == null) throw new IllegalArgumentException("serializer cannot be null.");
 		scalarSerializers.put(type, serializer);
+	}
+
+	/** Adds a property filter for the specified class type. */
+	public void setPropertyFilter (Class type, PropertyFilter filter) {
+		if (type == null) throw new IllegalArgumentException("type cannot be null.");
+		if (filter == null) throw new IllegalArgumentException("filter cannot be null.");
+		propertyFilters.put(type, filter);
 	}
 
 	/** Sets the default type of elements in a Collection or Map property. No tag will be output for elements of this type. This

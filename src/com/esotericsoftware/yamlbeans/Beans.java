@@ -16,26 +16,15 @@
 
 package com.esotericsoftware.yamlbeans;
 
-import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-
 import com.esotericsoftware.yamlbeans.YamlConfig.ConstructorParameters;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.*;
+import java.util.*;
 
 /** Utility for dealing with beans and public fields.
  * @author <a href="mailto:misc@n4te.com">Nathan Sweet</a> */
-class Beans {
+public class Beans {
 	private Beans () {
 	}
 
@@ -108,7 +97,7 @@ class Beans {
 	static public Set<Property> getProperties (Class type, boolean beanProperties, boolean privateFields, YamlConfig config) {
 		if (type == null) throw new IllegalArgumentException("type cannot be null.");
 		Class[] noArgs = new Class[0], oneArg = new Class[1];
-		Set<Property> properties = new TreeSet();
+		Set<Property> properties = new LinkedHashSet<>();
 		for (Field field : getAllFields(type)) {
 			String name = field.getName();
 
