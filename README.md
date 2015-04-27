@@ -6,6 +6,39 @@ This fork adds two main changes:
 3. Properties are written in the order that they appear in the class source file.
 2. Property filtering is enabled.
 
+To add this fork to an existing maven project, add the following to your pom.xml
+```xml
+  <dependencies>
+      <dependency>
+        <groupId>nz.co.thirstygoat</groupId>
+        <artifactId>yamlbeans</artifactId>
+        <version>1.09</version>
+      </dependency>
+  </dependencies>
+
+  <repositories>
+    <repository>
+      <id>yamlbeans-mvn-repo</id>
+      <url>https://raw.github.com/lihop/yamlbeans/mvn-repo/</url>
+      <snapshots>
+        <enabled>true</enabled>
+        <updatePolicy>always</updatePolicy>
+      </snapshots>
+    </repository>
+  </repositories>
+```
+
+## Property Filtering
+
+For examlpe, if you have a class User and you don't want to write its password property you could use this:
+
+```java
+YamlConfig config = new Conifg();
+config.setPropertyFilter(User.class new PropertyFilter() {
+    @Override
+    public Set<Beans.Property> filter(Set<Beans.Property> properties) throws YamlException {
+
+
 ## Property Filtering
 
 For examlpe, if you have a class User and you don't want to write its password property you could use this:
