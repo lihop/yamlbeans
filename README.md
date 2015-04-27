@@ -1,3 +1,41 @@
+## About this fork
+
+This fork adds two main changes:
+
+1. Infinite loops are prevented from occuring when autoAnchor is set to false.
+3. Properties are written in the order that they appear in the class source file.
+2. Property filtering is enabled.
+
+## Property Filtering
+
+For examlpe, if you have a class User and you don't want to write its password property you could use this:
+
+```java
+YamlConfig config = new Conifg();
+config.setPropertyFilter(User.class new PropertyFilter() {
+    @Override
+    public Set<Beans.Property> filter(Set<Beans.Property> properties) throws YamlException {
+        properties.removeIf(p -> p.getName().equals("password");
+        return properties;
+    }
+```
+
+If you only want to print the password and nothing else, you would add something like:
+
+```java
+properties.removeIf(p -> !(p.getName().equals("password"));
+```
+
+Similarly, you could print only String properties with:
+
+```java
+properties.removeIf(p -> !(p.getType().equals(String.class));
+```
+
+and so on.
+
+---
+
 ## YamlBeans
 
 Please use the [YamlBeans discussion group](http://groups.google.com/group/yamlbeans-users) for support.
@@ -148,7 +186,7 @@ YamlBeans can serialize any object graph.
     	public int age;
     	public List phoneNumbers;
     }
-    
+
     public class Phone {
     	public String name;
     	public String number;
